@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -125,7 +126,7 @@ serve(async (req) => {
         trends = newsData.articles?.map((article: any) => article.title).filter(Boolean) || [];
         console.log('Fetched trends from NewsAPI:', trends.length);
 
-        // 4️⃣ Cache headlines
+        // 4️⃣ Cache headlines -- UPDATED TO USE onConflict('niche,content').ignore()
         if (trends.length > 0) {
           for (const headline of trends) {
             try {
@@ -135,7 +136,9 @@ serve(async (req) => {
                   niche: profile.niche,
                   content: headline,
                   source: 'newsapi'
-                });
+                })
+                .onConflict('niche,content')
+                .ignore();
             } catch (insertError) {
               console.log('Insert conflict (expected):', insertError);
             }
