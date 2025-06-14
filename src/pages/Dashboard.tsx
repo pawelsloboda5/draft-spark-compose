@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Copy, Loader2 } from "lucide-react";
+import { Copy, Loader2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Post {
@@ -74,6 +74,40 @@ const Dashboard = () => {
     setLoading(false);
   };
 
+  // Handle post deletion
+  const handleDelete = async (postId: number) => {
+    const confirmed = window.confirm("Are you sure you want to delete this post?");
+    if (!confirmed) return;
+
+    // Optimistically remove from UI
+    setPosts((prev) => prev.filter((post) => post.id !== postId));
+
+    const { error } = await supabase
+      .from("generated_posts")
+      .delete()
+      .eq("id", postId);
+
+    if (error) {
+      toast({
+        title: "Delete failed",
+        description: "Could not delete post. Please try again.",
+        variant: "destructive",
+      });
+      // Revert UI change if error
+      // Refetch whole list for correctness
+      const { data } = await supabase
+        .from("generated_posts")
+        .select("*")
+        .order("created_at", { ascending: false });
+      setPosts(data || []);
+    } else {
+      toast({
+        title: "Deleted",
+        description: "The post was deleted.",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col px-0 sm:px-0">
       <div className="flex-1 w-full max-w-lg mx-auto py-8 space-y-6">
@@ -98,8 +132,17 @@ const Dashboard = () => {
           {posts.map((post) => (
             <Card
               key={post.id}
-              className="shadow-sm rounded-lg p-4 w-full flex flex-row justify-between items-start"
+              className="shadow-sm rounded-lg p-4 w-full flex flex-row justify-between items-start relative"
             >
+              {/* Delete button, absolute - top right on card (mobile-friendly) */}
+              <button
+                type="button"
+                onClick={() => handleDelete(post.id)}
+                className="absolute right-3 top-3 p-1.5 rounded-md hover:bg-red-50 transition"
+                aria-label="Delete post"
+              >
+                <Trash2 className="h-4 w-4 text-red-400 hover:text-red-600" />
+              </button>
               <span className="text-base text-gray-800 flex-1 mr-3">{post.content}</span>
               <button
                 className="p-2 rounded-lg hover:bg-blue-50 transition"
@@ -117,3 +160,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
