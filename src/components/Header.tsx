@@ -1,12 +1,15 @@
 
-import { Edit3, LogOut } from "lucide-react";
+import { Edit3, LogOut, Gear } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
+import ProfileDrawer from "./ProfileDrawer";
 
 const Header = () => {
   const { signOut, user } = useAuth();
   const { toast } = useToast();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -30,6 +33,14 @@ const Header = () => {
               {user.email}
             </div>
           )}
+          <button
+            aria-label="Profile"
+            className="rounded-full p-2 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-blue-400"
+            onClick={() => setDrawerOpen(true)}
+            type="button"
+          >
+            <Gear className="w-5 h-5 text-gray-500" />
+          </button>
           <Button
             variant="outline"
             size="sm"
@@ -40,6 +51,7 @@ const Header = () => {
             Sign Out
           </Button>
         </div>
+        <ProfileDrawer open={drawerOpen} setOpen={setDrawerOpen} />
       </div>
     </header>
   );
