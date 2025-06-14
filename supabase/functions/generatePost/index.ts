@@ -18,7 +18,14 @@ serve(async (req) => {
     // 1️⃣ Auth check
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
@@ -48,7 +55,7 @@ serve(async (req) => {
     console.log('Authenticated user:', userId);
 
     // 2️⃣ Load user context
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('user_profiles')
       .select('niche, tone')
       .eq('user_id', userId)
@@ -62,7 +69,7 @@ serve(async (req) => {
       });
     }
 
-    const { data: examplesData, error: examplesError } = await supabase
+    const { data: examplesData, error: examplesError } = await supabaseAdmin
       .from('user_examples')
       .select('content')
       .eq('user_id', userId)
@@ -106,7 +113,7 @@ serve(async (req) => {
         if (trends.length > 0) {
           for (const headline of trends) {
             try {
-              await supabase
+              await supabaseAdmin
                 .from('trending_posts')
                 .insert({
                   niche: profile.niche,
@@ -126,7 +133,7 @@ serve(async (req) => {
     // Fallback to database if NewsAPI fails or returns <2 titles
     if (trends.length < 2) {
       console.log('Using fallback trends from database');
-      const { data: fallbackTrends, error: trendsError } = await supabase
+      const { data: fallbackTrends, error: trendsError } = await supabaseAdmin
         .from('trending_posts')
         .select('content')
         .eq('niche', profile.niche)
@@ -186,7 +193,7 @@ Write ONE short social post (≤280 chars) that combines the user's tone with ON
     console.log('Generated text:', generatedText);
 
     // 6️⃣ Persist & return
-    const { error: insertError } = await supabase
+    const { error: insertError } = await supabaseAdmin
       .from('generated_posts')
       .insert({
         user_id: userId,
