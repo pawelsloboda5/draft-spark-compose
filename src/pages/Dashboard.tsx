@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useRef } from "react";
+import Header from "@/components/Header";
 
 interface Post {
   id: number;
@@ -157,104 +158,116 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col px-0 sm:px-0">
-      <div className="flex-1 w-full max-w-lg mx-auto py-8 space-y-6">
-        <h1 className="text-2xl font-bold mb-3 text-center">Your dashboard</h1>
+    <>
+      <Header />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col px-0 sm:px-0">
+        <div className="flex-1 w-full max-w-lg mx-auto py-8 space-y-6">
+          <h1 className="text-2xl font-bold mb-3 text-center">Your dashboard</h1>
 
-        {/* Writing Sample Collapsible */}
-        <Collapsible open={sampleOpen} onOpenChange={setSampleOpen}>
-          <div className="flex items-center justify-between">
-            <span className="font-medium text-gray-700">
-              Add a new writing sample (optional)
-            </span>
-            <CollapsibleTrigger asChild>
-              <button
-                className="p-2"
-                aria-label={sampleOpen ? "Hide writing sample input" : "Show writing sample input"}
-              >
-                {sampleOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-              </button>
-            </CollapsibleTrigger>
-          </div>
-          <CollapsibleContent>
-            <div className="mt-2 relative">
-              <Textarea
-                ref={textareaRef}
-                placeholder="Paste your recent writing sample…"
-                value={sampleText}
-                maxLength={maxLen}
-                onChange={(e) => setSampleText(e.target.value)}
-                className="resize-none mb-1"
-                rows={4}
-                aria-label="Writing sample for personalization"
-              />
-              <div className="absolute right-0 bottom-2 mr-2 text-xs text-gray-500 select-none">
-                {sampleText.length}/{maxLen}
-              </div>
+          {/* Writing Sample Collapsible */}
+          <Collapsible open={sampleOpen} onOpenChange={setSampleOpen}>
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-gray-700">
+                Add a new writing sample (optional)
+              </span>
+              <CollapsibleTrigger asChild>
+                <button
+                  className="p-2"
+                  aria-label={sampleOpen ? "Hide writing sample input" : "Show writing sample input"}
+                >
+                  {sampleOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </button>
+              </CollapsibleTrigger>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
-
-        {/* Generate Button */}
-        <Button
-          onClick={handleGenerate}
-          disabled={loading}
-          className="w-full h-14 text-lg font-semibold shadow-md rounded-lg"
-        >
-          {loading ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Generating…
-            </span>
-          ) : (
-            "Generate Posts"
-          )}
-        </Button>
-        {/* Posts List */}
-        <div className="flex flex-col gap-4">
-          {posts.map((post) => (
-            <Card
-              key={post.id}
-              className="shadow-sm rounded-lg p-4 w-full flex flex-row justify-between items-start relative"
-            >
-              {/* Delete button */}
-              <button
-                type="button"
-                onClick={() => handleDelete(post.id)}
-                className="absolute right-3 top-3 p-1.5 rounded-md hover:bg-red-50 transition"
-                aria-label="Delete post"
-              >
-                <Trash2 className="h-4 w-4 text-red-400 hover:text-red-600" />
-              </button>
-
-              {/* Content + Actions Row */}
-              <span className="text-base text-gray-800 flex-1 mr-2">{post.content}</span>
-              <div className="flex flex-row items-center gap-1">
-                <button
-                  className={`p-2 rounded-lg hover:bg-pink-50 transition`}
-                  aria-label={post.favorited ? "Remove from favorites" : "Favorite post"}
-                  onClick={() => handleFavorite(post.id, post.favorited)}
-                  disabled={toggleFavoriteLoading === post.id}
-                  style={{ color: post.favorited ? "#e83e8c" : "#a0aec0" }}
-                >
-                  <Heart
-                    className={`h-5 w-5 ${post.favorited ? "fill-pink-500 text-pink-500" : ""}`}
-                    fill={post.favorited ? "#e83e8c" : "none"}
-                  />
-                </button>
-                <button
-                  className="p-2 rounded-lg hover:bg-blue-50 transition"
-                  onClick={() => handleCopy(post.content)}
-                  aria-label="Copy to clipboard"
-                >
-                  <Copy className="h-5 w-5 text-gray-400" />
-                </button>
+            <CollapsibleContent>
+              <div className="mt-2 relative">
+                <Textarea
+                  ref={textareaRef}
+                  placeholder="Paste your recent writing sample…"
+                  value={sampleText}
+                  maxLength={maxLen}
+                  onChange={(e) => setSampleText(e.target.value)}
+                  className="resize-none mb-1"
+                  rows={4}
+                  aria-label="Writing sample for personalization"
+                />
+                <div className="absolute right-0 bottom-2 mr-2 text-xs text-gray-500 select-none">
+                  {sampleText.length}/{maxLen}
+                </div>
               </div>
-            </Card>
-          ))}
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Generate Button */}
+          <Button
+            onClick={handleGenerate}
+            disabled={loading}
+            className="w-full h-14 text-lg font-semibold shadow-md rounded-lg"
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Generating…
+              </span>
+            ) : (
+              "Generate Posts"
+            )}
+          </Button>
+          {/* Posts List or Empty State */}
+          {posts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center w-full bg-white rounded-lg shadow-md p-8 mt-8">
+              <div className="text-5xl mb-4 select-none">📝</div>
+              <h2 className="text-lg font-semibold text-gray-700 text-center mb-2">
+                No posts yet. Click ‘Generate Posts’ to create your first idea!
+              </h2>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {posts.map((post) => (
+                <Card
+                  key={post.id}
+                  className="shadow-sm rounded-lg p-4 w-full flex flex-row justify-between items-start relative"
+                >
+                  {/* Delete button */}
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(post.id)}
+                    className="absolute right-3 top-3 p-1.5 rounded-md hover:bg-red-50 transition"
+                    aria-label="Delete post"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-400 hover:text-red-600" />
+                  </button>
+
+                  {/* Content + Actions Row */}
+                  <span className="text-base text-gray-800 flex-1 mr-2">{post.content}</span>
+                  <div className="flex flex-row items-center gap-1">
+                    <button
+                      className={`p-2 rounded-lg hover:bg-pink-50 transition`}
+                      aria-label={post.favorited ? "Remove from favorites" : "Favorite post"}
+                      onClick={() => handleFavorite(post.id, post.favorited)}
+                      disabled={toggleFavoriteLoading === post.id}
+                      style={{ color: post.favorited ? "#e83e8c" : "#a0aec0" }}
+                    >
+                      <Heart
+                        className={`h-5 w-5 ${post.favorited ? "fill-pink-500 text-pink-500" : ""}`}
+                        fill={post.favorited ? "#e83e8c" : "none"}
+                      />
+                    </button>
+                    <button
+                      className="p-2 rounded-lg hover:bg-blue-50 transition"
+                      onClick={() => handleCopy(post.content)}
+                      aria-label="Copy to clipboard"
+                    >
+                      <Copy className="h-5 w-5 text-gray-400" />
+                    </button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
