@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -69,7 +68,7 @@ const SetupProfile = () => {
       }
 
       // Invalidate profile query and redirect to dashboard immediately!
-      qc.invalidateQueries(["user-profile", user_id]);
+      qc.invalidateQueries({ queryKey: ["user-profile", user_id] });
       navigate("/dashboard", { replace: true });
     } catch (err) {
       toast({ title: "Unexpected error", description: "Please try again.", variant: "destructive" });
