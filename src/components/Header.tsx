@@ -1,5 +1,5 @@
 
-import { Edit3, LogOut, Gear } from "lucide-react";
+import { Edit3, LogOut, Cog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -39,7 +39,7 @@ const Header = () => {
             onClick={() => setDrawerOpen(true)}
             type="button"
           >
-            <Gear className="w-5 h-5 text-gray-500" />
+            <Cog className="w-5 h-5 text-gray-500" />
           </button>
           <Button
             variant="outline"
