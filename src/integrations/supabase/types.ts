@@ -9,7 +9,93 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      generated_posts: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: number
+          user_id: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: number
+          user_id?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      trending_posts: {
+        Row: {
+          collected_at: string | null
+          content: string | null
+          id: number
+          niche: string | null
+          source: string | null
+        }
+        Insert: {
+          collected_at?: string | null
+          content?: string | null
+          id?: number
+          niche?: string | null
+          source?: string | null
+        }
+        Update: {
+          collected_at?: string | null
+          content?: string | null
+          id?: number
+          niche?: string | null
+          source?: string | null
+        }
+        Relationships: []
+      }
+      user_examples: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: number
+          user_id: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: number
+          user_id?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          created_at: string | null
+          niche: string | null
+          tone: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          niche?: string | null
+          tone?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          niche?: string | null
+          tone?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, Loader2, RefreshCw, Edit3 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { generatePosts } from "@/utils/api";
 import Header from "@/components/Header";
 import PostCard from "@/components/PostCard";
 
@@ -23,6 +25,7 @@ const Index = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([]);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const niches = ["AI", "Fitness", "Finance", "Health", "Travel"];
   const tones = ["Formal", "Casual", "Humorous", "Motivational"];
@@ -40,28 +43,17 @@ const Index = () => {
     setIsGenerating(true);
     
     try {
-      // Simulate API call for now
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const posts = await generatePosts({
+        niche: selectedNiche,
+        sampleText,
+        tone: selectedTone,
+        userId: user?.id,
+      });
       
-      const mockPosts: GeneratedPost[] = [
-        {
-          id: "1",
-          content: `🚀 The future of ${selectedNiche.toLowerCase()} is here! Discover how cutting-edge innovations are transforming the industry. What's your take on the latest trends? #${selectedNiche} #Innovation`
-        },
-        {
-          id: "2",
-          content: `💡 Quick tip for ${selectedNiche.toLowerCase()} enthusiasts: Success isn't just about what you know, it's about how you apply that knowledge. Share your best ${selectedNiche.toLowerCase()} hack below! 👇`
-        },
-        {
-          id: "3",
-          content: `🔥 Hot take: The biggest mistake people make in ${selectedNiche.toLowerCase()} is overthinking. Sometimes the simplest approach yields the best results. Agree or disagree? Let's discuss! 💬`
-        }
-      ];
-      
-      setGeneratedPosts(mockPosts);
+      setGeneratedPosts(posts);
       toast({
         title: "Posts generated successfully!",
-        description: `Created ${mockPosts.length} posts for ${selectedNiche}`,
+        description: `Created ${posts.length} posts for ${selectedNiche}`,
       });
     } catch (error) {
       toast({
