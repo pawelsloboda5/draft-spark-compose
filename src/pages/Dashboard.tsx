@@ -3,21 +3,23 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Copy, Loader2, Trash2 } from "lucide-react";
+import { Copy, Loader2, Trash2, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Post {
   id: number;
   content: string;
   created_at: string;
+  favorited: boolean;
 }
 
 const Dashboard = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const [toggleFavoriteLoading, setToggleFavoriteLoading] = useState<number | null>(null);
 
-  // Fetch existing posts ordered by created_at desc
+  // Fetch posts including 'favorited'
   useEffect(() => {
     const fetchPosts = async () => {
       const { data, error } = await supabase
@@ -61,6 +63,7 @@ const Dashboard = () => {
           id: Date.now(), // temp fallback, real id comes from DB after refresh
           content: data.content,
           created_at: new Date().toISOString(),
+          favorited: false,
         },
         ...prev,
       ]);
@@ -108,6 +111,33 @@ const Dashboard = () => {
     }
   };
 
+  // Toggle favorite
+  const handleFavorite = async (postId: number, current: boolean) => {
+    setToggleFavoriteLoading(postId);
+    const { error } = await supabase
+      .from("generated_posts")
+      .update({ favorited: !current })
+      .eq("id", postId);
+
+    if (error) {
+      toast({
+        title: "Could not update favorite",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } else {
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId ? { ...p, favorited: !current } : p
+        )
+      );
+      toast({
+        title: !current ? "Post favorited!" : "Removed from favorites",
+      });
+    }
+    setToggleFavoriteLoading(null);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col px-0 sm:px-0">
       <div className="flex-1 w-full max-w-lg mx-auto py-8 space-y-6">
@@ -134,7 +164,7 @@ const Dashboard = () => {
               key={post.id}
               className="shadow-sm rounded-lg p-4 w-full flex flex-row justify-between items-start relative"
             >
-              {/* Delete button, absolute - top right on card (mobile-friendly) */}
+              {/* Delete button */}
               <button
                 type="button"
                 onClick={() => handleDelete(post.id)}
@@ -143,14 +173,30 @@ const Dashboard = () => {
               >
                 <Trash2 className="h-4 w-4 text-red-400 hover:text-red-600" />
               </button>
-              <span className="text-base text-gray-800 flex-1 mr-3">{post.content}</span>
-              <button
-                className="p-2 rounded-lg hover:bg-blue-50 transition"
-                onClick={() => handleCopy(post.content)}
-                aria-label="Copy to clipboard"
-              >
-                <Copy className="h-5 w-5 text-gray-400" />
-              </button>
+
+              {/* Content + Actions Row */}
+              <span className="text-base text-gray-800 flex-1 mr-2">{post.content}</span>
+              <div className="flex flex-row items-center gap-1">
+                <button
+                  className={`p-2 rounded-lg hover:bg-pink-50 transition`}
+                  aria-label={post.favorited ? "Remove from favorites" : "Favorite post"}
+                  onClick={() => handleFavorite(post.id, post.favorited)}
+                  disabled={toggleFavoriteLoading === post.id}
+                  style={{ color: post.favorited ? "#e83e8c" : "#a0aec0" }}
+                >
+                  <Heart
+                    className={`h-5 w-5 ${post.favorited ? "fill-pink-500 text-pink-500" : ""}`}
+                    fill={post.favorited ? "#e83e8c" : "none"}
+                  />
+                </button>
+                <button
+                  className="p-2 rounded-lg hover:bg-blue-50 transition"
+                  onClick={() => handleCopy(post.content)}
+                  aria-label="Copy to clipboard"
+                >
+                  <Copy className="h-5 w-5 text-gray-400" />
+                </button>
+              </div>
             </Card>
           ))}
         </div>
@@ -160,4 +206,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
