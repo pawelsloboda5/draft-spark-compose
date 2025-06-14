@@ -1,10 +1,13 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Copy, Loader2, Trash2, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Textarea } from "@/components/ui/textarea";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { useRef } from "react";
 
 interface Post {
   id: number;
@@ -18,6 +21,10 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [toggleFavoriteLoading, setToggleFavoriteLoading] = useState<number | null>(null);
+  const [sampleOpen, setSampleOpen] = useState(false);
+  const [sampleText, setSampleText] = useState("");
+  const maxLen = 280;
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Fetch posts including 'favorited'
   useEffect(() => {
@@ -43,11 +50,18 @@ const Dashboard = () => {
     });
   };
 
-  // Handle post generation
+  // Updated handleGenerate
   const handleGenerate = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generatePost");
+      // If sampleText is present and not just whitespace, include it
+      const body: Record<string, any> = {};
+      if (sampleText.trim().length > 0) {
+        body.sampleText = sampleText.trim();
+      }
+      const { data, error } = await supabase.functions.invoke("generatePost", {
+        body,
+      });
       if (error || !data || !data.content) {
         toast({
           title: "Generation failed",
@@ -57,16 +71,20 @@ const Dashboard = () => {
         setLoading(false);
         return;
       }
-      // Prepend newly generated post to list
       setPosts((prev) => [
         {
-          id: Date.now(), // temp fallback, real id comes from DB after refresh
+          id: Date.now(), // temp fallback
           content: data.content,
           created_at: new Date().toISOString(),
           favorited: false,
         },
         ...prev,
       ]);
+      setSampleText(""); // Clear textarea on success
+      setSampleOpen(false);
+      if (textareaRef.current) {
+        textareaRef.current.blur();
+      }
     } catch {
       toast({
         title: "Generation failed",
@@ -142,6 +160,41 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col px-0 sm:px-0">
       <div className="flex-1 w-full max-w-lg mx-auto py-8 space-y-6">
         <h1 className="text-2xl font-bold mb-3 text-center">Your dashboard</h1>
+
+        {/* Writing Sample Collapsible */}
+        <Collapsible open={sampleOpen} onOpenChange={setSampleOpen}>
+          <div className="flex items-center justify-between">
+            <span className="font-medium text-gray-700">
+              Add a new writing sample (optional)
+            </span>
+            <CollapsibleTrigger asChild>
+              <button
+                className="p-2"
+                aria-label={sampleOpen ? "Hide writing sample input" : "Show writing sample input"}
+              >
+                {sampleOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              </button>
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent>
+            <div className="mt-2 relative">
+              <Textarea
+                ref={textareaRef}
+                placeholder="Paste your recent writing sample…"
+                value={sampleText}
+                maxLength={maxLen}
+                onChange={(e) => setSampleText(e.target.value)}
+                className="resize-none mb-1"
+                rows={4}
+                aria-label="Writing sample for personalization"
+              />
+              <div className="absolute right-0 bottom-2 mr-2 text-xs text-gray-500 select-none">
+                {sampleText.length}/{maxLen}
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
         {/* Generate Button */}
         <Button
           onClick={handleGenerate}
