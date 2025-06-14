@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -38,10 +39,13 @@ const SetupProfile = () => {
 
     try {
       const user_id = user?.id;
-      // Insert into user_profiles
+      // Upsert into user_profiles
       const { error: profileError } = await supabase
         .from("user_profiles")
-        .insert([{ user_id, niche, tone }]);
+        .upsert(
+          { user_id, niche, tone },
+          { onConflict: "user_id" }
+        );
 
       if (profileError) {
         toast({ title: "Error", description: profileError.message, variant: "destructive" });
@@ -49,7 +53,9 @@ const SetupProfile = () => {
         return;
       }
 
-      // Insert into user_examples
+      toast({ title: "Profile updated", description: "Your profile has been set up." });
+
+      // Insert into user_examples (leave as-is)
       const { error: exampleError } = await supabase
         .from("user_examples")
         .insert([{ user_id, content: example }]);
@@ -60,7 +66,6 @@ const SetupProfile = () => {
         return;
       }
 
-      toast({ title: "Profile saved", description: "Your profile has been set up." });
       navigate("/dashboard", { replace: true });
     } catch (err) {
       toast({ title: "Unexpected error", description: "Please try again.", variant: "destructive" });
