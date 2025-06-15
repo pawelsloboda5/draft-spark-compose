@@ -26,6 +26,9 @@ const Dashboard = () => {
   const [sampleText, setSampleText] = useState("");
   const maxLen = 280;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [trends, setTrends] = useState<string[]>([]);
+  const [selectedHeadline, setSelectedHeadline] = useState<string | null>(null);
+  const [trendsLoading, setTrendsLoading] = useState(false);
 
   // Fetch posts including 'favorited'
   useEffect(() => {
@@ -40,6 +43,37 @@ const Dashboard = () => {
       }
     };
     fetchPosts();
+  }, []);
+
+  // Fetch trends on mount and when niche changes (setup a simple reload trigger)
+  useEffect(() => {
+    let mounted = true;
+    const fetchTrends = async () => {
+      setTrendsLoading(true);
+      const { data, error } = await supabase.functions.invoke("fetchTrends");
+      if (mounted) {
+        setTrends(data?.trends || []);
+        setTrendsLoading(false);
+      }
+    };
+    fetchTrends();
+    return () => { mounted = false };
+  }, []);
+
+  // Listen to niche changes from ProfileDrawer (custom event approach)
+  useEffect(() => {
+    // Listen for a window event after profile edit
+    const handler = () => {
+      // refetch trends after profile changes & drawer closes
+      setTrendsLoading(true);
+      supabase.functions.invoke("fetchTrends").then(({ data }) => {
+        setTrends(data?.trends || []);
+        setTrendsLoading(false);
+        setSelectedHeadline(null); // Optionally reset selection when profile changes
+      });
+    };
+    window.addEventListener("profileUpdated", handler);
+    return () => window.removeEventListener("profileUpdated", handler);
   }, []);
 
   // Handle copy to clipboard
@@ -59,6 +93,9 @@ const Dashboard = () => {
       const body: Record<string, any> = {};
       if (sampleText.trim().length > 0) {
         body.sampleText = sampleText.trim();
+      }
+      if (selectedHeadline) {
+        body.headline = selectedHeadline;
       }
       const { data, error } = await supabase.functions.invoke("generatePost", {
         body,
@@ -86,6 +123,7 @@ const Dashboard = () => {
       if (textareaRef.current) {
         textareaRef.current.blur();
       }
+      // Keep selectedHeadline as is for smoother UX
     } catch {
       toast({
         title: "Generation failed",
@@ -163,6 +201,27 @@ const Dashboard = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col px-0 sm:px-0">
         <div className="flex-1 w-full max-w-lg mx-auto py-8 space-y-6">
           <h1 className="text-2xl font-bold mb-3 text-center">Your dashboard</h1>
+          
+          {/* Trending headlines chips */}
+          {trendsLoading ? (
+            <div className="flex justify-center py-2"><Loader2 className="animate-spin h-5 w-5 text-blue-500" /></div>
+          ) : trends.length > 0 && (
+            <div className="flex flex-row flex-wrap gap-2 mb-1">
+              {trends.map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => setSelectedHeadline(selectedHeadline === h ? null : h)}
+                  className={`px-3 py-1 rounded-full text-sm border transition
+                    ${selectedHeadline === h ? "bg-blue-600 text-white border-blue-600" : "bg-gray-100 border-gray-300 text-gray-800"}
+                  `}
+                  aria-pressed={selectedHeadline === h}
+                >
+                  {h}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Writing Sample Collapsible */}
           <Collapsible open={sampleOpen} onOpenChange={setSampleOpen}>

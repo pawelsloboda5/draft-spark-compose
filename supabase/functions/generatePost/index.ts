@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -17,14 +16,18 @@ serve(async (req) => {
   try {
     // 0️⃣ Parse body safely (support empty POST)
     let sampleText = "";
+    let headline = "";
     try {
       const maybeBody = await req.json();
       if (maybeBody && maybeBody.sampleText && typeof maybeBody.sampleText === "string") {
         sampleText = maybeBody.sampleText.trim();
       }
+      if (maybeBody && maybeBody.headline && typeof maybeBody.headline === "string") {
+        headline = maybeBody.headline.trim();
+      }
     } catch {
-      // No body or not JSON: treat as no sample
       sampleText = "";
+      headline = "";
     }
 
     // 1️⃣ Auth check
@@ -97,89 +100,95 @@ serve(async (req) => {
     console.log('User profile:', profile);
     console.log('Examples count:', examples.length);
 
-    // 3️⃣ Fetch fresh trending topics
-    const newsApiKey = Deno.env.get('NEWS_API_KEY');
     let trends: string[] = [];
 
-    try {
-      const categoryMap: { [key: string]: string } = {
-        'AI': 'technology',
-        'Fitness': 'health',
-        'Finance': 'business',
-        'Health': 'health',
-        'Travel': 'general'
-      };
+    if (headline) {
+      // 2.1. If headline provided, use only that (skip NewsAPI/database)
+      trends = [headline];
+    } else {
+      // 3️⃣ Fetch fresh trending topics
+      const newsApiKey = Deno.env.get('NEWS_API_KEY');
+      try {
+        const categoryMap: { [key: string]: string } = {
+          'AI': 'technology',
+          'Fitness': 'health',
+          'Finance': 'business',
+          'Health': 'health',
+          'Travel': 'general'
+        };
+        const category = categoryMap[profile.niche] || 'general';
+        const newsUrl = `https://newsapi.org/v2/top-headlines?category=${category}&pageSize=5&sortBy=publishedAt&language=en`;
+        const newsResponse = await fetch(newsUrl, { headers: { 'X-Api-Key': newsApiKey! } });
 
-      const category = categoryMap[profile.niche] || 'general';
-      const newsUrl = `https://newsapi.org/v2/top-headlines?category=${category}&pageSize=5&sortBy=publishedAt&language=en`;
-      
-      console.log('Fetching from NewsAPI:', newsUrl);
-      
-      const newsResponse = await fetch(newsUrl, {
-        headers: {
-          'X-Api-Key': newsApiKey!
-        }
-      });
-
-      if (newsResponse.ok) {
-        const newsData = await newsResponse.json();
-        trends = newsData.articles?.map((article: any) => article.title).filter(Boolean) || [];
-        console.log('Fetched trends from NewsAPI:', trends.length);
-
-        // 4️⃣ Cache headlines -- UPDATED TO USE onConflict('niche,content').ignore()
-        if (trends.length > 0) {
-          for (const headline of trends) {
-            try {
-              await supabaseAdmin
-                .from('trending_posts')
-                .insert({
-                  niche: profile.niche,
-                  content: headline,
-                  source: 'newsapi'
-                })
-                .onConflict('niche,content')
-                .ignore();
-            } catch (insertError) {
-              console.log('Insert conflict (expected):', insertError);
+        if (newsResponse.ok) {
+          const newsData = await newsResponse.json();
+          trends = newsData.articles?.map((article: any) => article.title).filter(Boolean) || [];
+          if (trends.length > 0) {
+            for (const headline of trends) {
+              try {
+                await supabaseAdmin
+                  .from('trending_posts')
+                  .insert({
+                    niche: profile.niche,
+                    content: headline,
+                    source: 'newsapi'
+                  })
+                  .onConflict('niche,content')
+                  .ignore();
+              } catch (insertError) {
+                console.log('Insert conflict (expected):', insertError);
+              }
             }
           }
         }
+      } catch (newsError) {
+        console.error('NewsAPI error:', newsError);
       }
-    } catch (newsError) {
-      console.error('NewsAPI error:', newsError);
-    }
+      // Fallback to database if NewsAPI fails or returns <2 titles
+      if (trends.length < 2) {
+        console.log('Using fallback trends from database');
+        const { data: fallbackTrends, error: trendsError } = await supabaseAdmin
+          .from('trending_posts')
+          .select('content')
+          .eq('niche', profile.niche)
+          .order('collected_at', { ascending: false })
+          .limit(5);
 
-    // Fallback to database if NewsAPI fails or returns <2 titles
-    if (trends.length < 2) {
-      console.log('Using fallback trends from database');
-      const { data: fallbackTrends, error: trendsError } = await supabaseAdmin
-        .from('trending_posts')
-        .select('content')
-        .eq('niche', profile.niche)
-        .order('collected_at', { ascending: false })
-        .limit(5);
-
-      if (!trendsError && fallbackTrends) {
-        trends = fallbackTrends.map(t => t.content);
+        if (!trendsError && fallbackTrends) {
+          trends = fallbackTrends.map(t => t.content);
+        }
       }
     }
 
     console.log('Final trends count:', trends.length);
-
+    
     // 5️⃣ OpenAI prompt & call
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    
+
     const systemPrompt = "You are a social-media copywriter that perfectly mimics a user's tone.";
-    
-    const userPrompt = `Niche: ${profile.niche}
+
+    let userPrompt = `Niche: ${profile.niche}
 Tone: ${profile.tone}
 Writing style samples:
-${examples.join('\n')}
+${examples.join("\n")}
 
 Fresh trending topics:
 ${trends.slice(0, 3).map(trend => `• ${trend}`).join('\n')}
 
 Write ONE short social post (≤280 chars) that combines the user's tone with ONE of the trending topics. Respond with only the post text.`;
+
+    if (headline) {
+      // Override prompt, list only headline
+      userPrompt = `Niche: ${profile.niche}
+Tone: ${profile.tone}
+Writing style samples:
+${examples.join("\n")}
+
+Headline:
+${headline}
+
+Write ONE short social post (≤280 chars) that combines the user's tone with the given headline only. Respond with only the post text.`;
+    }
 
     console.log('Calling OpenAI with prompt length:', userPrompt.length);
 
